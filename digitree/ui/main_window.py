@@ -258,6 +258,7 @@ class MainWindow(QMainWindow):
         if dlg.exec() == QDialog.Accepted:
             self._current_tree.stages = dlg.get_stages()
             self._rebuild_stage_names_combo()
+            self._refresh_panels()
             self._auto_save()
 
     def _on_edit_type_tags(self):
@@ -267,6 +268,7 @@ class MainWindow(QMainWindow):
         dlg = TypeTagsEditor(self._current_tree.type_tags, self)
         if dlg.exec() == QDialog.Accepted:
             self._current_tree.type_tags = dlg.get_tags()
+            self._refresh_panels()
             self._auto_save()
 
     def _on_edit_req_types(self):
@@ -276,6 +278,7 @@ class MainWindow(QMainWindow):
         dlg = ReqTypesEditor(self._current_tree.requirement_types, self)
         if dlg.exec() == QDialog.Accepted:
             self._current_tree.requirement_types = dlg.get_req_types()
+            self._refresh_panels()
             self._auto_save()
 
     def _on_edit_versions(self):
@@ -285,6 +288,8 @@ class MainWindow(QMainWindow):
         dlg = VersionsEditor(self._current_tree.versions, self)
         if dlg.exec() == QDialog.Accepted:
             self._current_tree.versions = dlg.get_versions()
+            self._rebuild_version_filter()
+            self._refresh_panels()
             self._auto_save()
 
     # ------------------------------------------------------------------

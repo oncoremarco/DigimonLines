@@ -18,7 +18,7 @@ class StagesEditor(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Edit Stages")
         self.setMinimumSize(520, 400)
-        self._items = [copy.copy(s) for s in stages]
+        self._items = [copy.deepcopy(s) for s in stages]
         self._updating = False
         self._build()
         self._populate()

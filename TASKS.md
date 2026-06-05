@@ -4,6 +4,24 @@ Each phase ends on a **deliverable, stable, testable** build. Phases build on ea
 
 ---
 
+## ✅ Completed (Session 1)
+
+### Phases 1–3 + Alias System
+
+**Phase 1 — Project Shell & Data Layer** ✅
+Full project scaffold, data model (`models/tree.py`), XML save/load (`io/tree_xml.py`), platform-aware paths (`app_paths.py`), JSON config (`config.py`), SQLite Wikimon cache schema (`db/cache.py`), and main window shell with sidebar, status bar, and menu.
+
+**Phase 2 — Entry & Connection Editors** ✅
+All settings editors (Stages, Type Tags, Req. Types, Versions) with drag-to-reorder lists and color pickers. Full Entry editor (name, stage, tags, versions, images, device data, wikimon key, notes) and Connection editor with dynamic requirement group builder. Entries and connections list panels with double-click to edit and add buttons. Auto-save after every change.
+
+**Phase 3 — Graph Canvas** ✅
+`GraphCanvas(QGraphicsView)` base with Ctrl+scroll zoom and scroll-hand pan. `GrowthTreeCanvas` renders Digimon entry cards (stage-color header, name, type-tag badges, Wikimon "W" badge, artwork thumbnail) with cubic bezier connection arrows (solid/dashed). Stage-column auto-layout with manual drag-to-reposition (positions persisted to XML). Version filter toolbar combo. Fit View button.
+
+**Alias / Display-Name System** ✅
+`Stage.aliases` list (one slot per naming convention). `Tree.stage_display_index` selects which slot to display across all stages. Default Digimon stages ship with slot 1 = Japanese names (Child/Adult/Perfect/Ultimate) and slot 2 = English dub names (Rookie/Champion/Ultimate/Mega). Toolbar "Stage names" combo switches live. Per-entry `aliases` list and `display_name` override field; "Display as" combo in entry editor picks from canonical name or any alias. All display surfaces (canvas cards, entries list, connections list) use the active display names.
+
+---
+
 ## Phase 1 — Project Shell & Data Layer
 
 Goal: A runnable application window and a fully working save/load data layer. No canvas rendering yet. Verifiable by creating, saving, and reloading a tree file and inspecting it as valid XML.
@@ -307,39 +325,72 @@ At least the DM Original and DMX XA/XB presets are loadable from the preset brow
 
 ---
 
-## Phase 8 — Polish & Completeness
+## Phase 8 — Wikimon Evolution Database & Suggestion Search
+
+Goal: The cached Wikimon data is extended to include the full evolutionary relationship graph and Digimon metadata fields (Fields/Families, Attribute, Type). A search panel lets users query this database to discover candidate Digimon for their tree. Verifiable by searching for "Vaccine + Nature Spirits + Adult stage" and confirming results match wikimon.net data.
+
+### 8.1 Extended scraping (builds on Phase 4 scraper)
+- [ ] `digitree/wikimon/parser.py` extended to also extract:
+  - Prior evolutions (what this Digimon evolves from) and next evolutions (what it can evolve to), stored as lists of wikimon keys
+  - Fields / Families (Nature Spirits, Deep Savers, Nightmare Soldiers, etc.)
+  - Attribute (Vaccine / Data / Virus / Free)
+  - Digimon type (Dragon, Beast, Aqua, etc.)
+- [ ] New cache tables: `digimon_evolutions` (wikimon_key, direction, related_key), `digimon_fields` (wikimon_key, field_name)
+- [ ] `CacheDB` updated with upsert/get helpers for the new tables
+- [ ] Existing fetch flow in Phase 4 automatically populates the new tables when a page is scraped
+
+### 8.2 Suggestion search panel
+- [ ] `digitree/ui/panels/suggestion_panel.py` — collapsible panel, accessible from a toolbar button or View menu
+- [ ] Filter controls: Stage (dropdown), Attribute (dropdown), Type (text/dropdown), Field (multi-select), name fragment (text input)
+- [ ] "Search" button queries the local Wikimon cache DB
+- [ ] Results shown in a table: name, stage, attribute, type, fields, cached artwork thumbnail
+- [ ] "Add to tree" button per result: creates an Entry pre-populated with wikimon key, name, stage (mapped by label), type tags
+- [ ] "Fetch & add" for results not yet in the cache: triggers a fetch then adds
+- [ ] Results show which Digimon are already in the current tree (grayed out or marked)
+
+### 8.3 Evolution graph viewer (stretch)
+- [ ] Optional: from the profile panel, a "Show evolution graph" button opens a mini canvas showing the Wikimon-sourced evolution graph for that Digimon (not the user's tree — the full wiki graph)
+- [ ] Nodes are clickable: clicking one shows its profile and offers "Add to tree"
+- [ ] This is strictly from cached data; no live fetching in this view
+
+### **Phase 9 Deliverable**
+After fetching a set of Digimon in Phase 4, the suggestion search returns filtered results from the local cache. A user can search for Digimon matching criteria, browse the results with thumbnails, and add them directly to the open tree. Evolution relationship data is stored correctly in the DB.
+
+---
+
+## Phase 9 — Polish & Completeness
 
 Goal: The app is stable enough for daily use. Verifiable by a full end-to-end session: load a preset, fetch Wikimon data for all entries (batch), use Route Finder, export a PNG, edit the tree, save.
 
-### 8.1 Undo/Redo
+### 9.1 Undo/Redo
 - [ ] `QUndoStack` wired to all mutating operations: add/delete/edit entry, add/delete/edit connection, drag node, auto-layout
 - [ ] Ctrl+Z / Ctrl+Y shortcuts
 - [ ] Undo history shown in Edit menu
 
-### 8.2 Search
+### 9.2 Search
 - [ ] `Ctrl+F` opens a search bar above the canvas
 - [ ] Filters entry list and highlights matching nodes on canvas (non-matching nodes dimmed)
 - [ ] Clears on Escape
 
-### 8.3 Entry duplicate detection
+### 9.3 Entry duplicate detection
 - [ ] Warn (non-blocking dialog) when adding an entry whose name exactly matches an existing entry in the same tree
 
-### 8.4 Dark / Light theme
+### 9.4 Dark / Light theme
 - [ ] `QApplication.setStyle()` + custom palette toggle
 - [ ] Theme stored in `config.json`
 - [ ] Toggle via View > Theme menu
 
-### 8.5 Settings screen
+### 9.5 Settings screen
 - [ ] `digitree/ui/dialogs/settings_dialog.py`
 - [ ] Cache management: show cache DB size, "Clear wikimon image cache" button, "Clear all cached data" (with confirmation)
 - [ ] Rate limit config: adjustable delay between Wikimon requests (default 2.0s)
 - [ ] Default card size: Small / Medium / Large
 - [ ] Wikimon image directory path (override default)
 
-### 8.6 Missing / remaining presets
+### 9.6 Missing / remaining presets
 - [ ] Complete any remaining preset data files from Phase 7
 
-### **Phase 8 Deliverable**
+### **Phase 9 Deliverable**
 Full application is stable and usable. Undo/redo works across all operations. Search highlights entries. Settings screen functional. All priority presets from Phase 7 complete. App can be handed to a user with no further explanation needed.
 
 ---
