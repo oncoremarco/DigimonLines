@@ -14,6 +14,7 @@ class Stage:
     label: str
     order: int
     color: str = "#FFFFFF"
+    aliases: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -72,6 +73,8 @@ class Entry:
     notes: str = ""
     pos_x: float = 0.0
     pos_y: float = 0.0
+    aliases: list[str] = field(default_factory=list)
+    display_name: str = ""
 
 
 @dataclass
@@ -98,18 +101,34 @@ class Tree:
     requirement_types: list[RequirementType] = field(default_factory=list)
     entries: list[Entry] = field(default_factory=list)
     connections: list[Connection] = field(default_factory=list)
+    stage_display_index: int = 0  # 0=primary label, 1=alias[0], 2=alias[1], ...
+
+
+# -- Display helpers ---------------------------------------------------
+
+def get_stage_label(stage: Stage, display_index: int = 0) -> str:
+    """Return the stage label for the given alias slot (0 = primary)."""
+    if display_index <= 0 or not stage.aliases:
+        return stage.label
+    idx = display_index - 1
+    return stage.aliases[idx] if idx < len(stage.aliases) else stage.label
+
+
+def get_entry_display_name(entry: Entry) -> str:
+    """Return the active display name for an entry (alias override or canonical)."""
+    return entry.display_name if entry.display_name else entry.name
 
 
 # -- Digimon defaults --------------------------------------------------
 
 def make_digimon_defaults() -> tuple[list[Stage], list[TypeTag], list[RequirementType]]:
     stages = [
-        Stage("s1", "Stage I (Baby I)",   1, "#E8D5FF"),
-        Stage("s2", "Stage II (Baby II)",  2, "#D5E8FF"),
-        Stage("s3", "Stage III (Child)",   3, "#D5FFE8"),
-        Stage("s4", "Stage IV (Adult)",    4, "#FFFBD5"),
-        Stage("s5", "Stage V (Perfect)",   5, "#FFE8D5"),
-        Stage("s6", "Stage VI (Ultimate)", 6, "#FFD5D5"),
+        Stage("s1", "Stage I",   1, "#E8D5FF", aliases=["Baby I",   "Baby"]),
+        Stage("s2", "Stage II",  2, "#D5E8FF", aliases=["Baby II",  "In-Training"]),
+        Stage("s3", "Stage III", 3, "#D5FFE8", aliases=["Child",    "Rookie"]),
+        Stage("s4", "Stage IV",  4, "#FFFBD5", aliases=["Adult",    "Champion"]),
+        Stage("s5", "Stage V",   5, "#FFE8D5", aliases=["Perfect",  "Ultimate"]),
+        Stage("s6", "Stage VI",  6, "#FFD5D5", aliases=["Ultimate", "Mega"]),
     ]
     type_tags = [
         TypeTag("vaccine", "Vaccine", "#4A90D9", "V"),

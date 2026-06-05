@@ -5,7 +5,7 @@ import copy
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QListWidget, QListWidgetItem, QPushButton,
-    QLineEdit, QFormLayout, QDialogButtonBox,
+    QLineEdit, QPlainTextEdit, QFormLayout, QDialogButtonBox,
 )
 from PySide6.QtCore import Qt
 
@@ -62,6 +62,15 @@ class StagesEditor(QDialog):
         form.addRow("Label:", self._label_edit)
         form.addRow("Color:", self._color_btn)
         right.addLayout(form)
+
+        right.addWidget(QLabel(
+            "Aliases  (one per line — slot 1 = JP name, slot 2 = EN dub name, …):"
+        ))
+        self._aliases_edit = QPlainTextEdit()
+        self._aliases_edit.setMaximumHeight(80)
+        self._aliases_edit.setPlaceholderText("e.g.\nChild\nRookie")
+        self._aliases_edit.textChanged.connect(self._on_aliases_changed)
+        right.addWidget(self._aliases_edit)
         right.addStretch()
 
         body.addLayout(left, 2)
@@ -103,6 +112,7 @@ class StagesEditor(QDialog):
         self._updating = True
         self._label_edit.setText(s.label)
         self._color_btn.set_color(s.color)
+        self._aliases_edit.setPlainText("\n".join(s.aliases))
         self._updating = False
 
     # ------------------------------------------------------------------
@@ -123,6 +133,17 @@ class StagesEditor(QDialog):
         s = self._current()
         if s:
             s.color = color
+
+    def _on_aliases_changed(self):
+        if self._updating:
+            return
+        s = self._current()
+        if s:
+            s.aliases = [
+                line.strip()
+                for line in self._aliases_edit.toPlainText().splitlines()
+                if line.strip()
+            ]
 
     # ------------------------------------------------------------------
     # Add / Delete

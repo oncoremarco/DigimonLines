@@ -3,7 +3,7 @@ import copy
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QLineEdit, QTextEdit, QCheckBox, QComboBox,
+    QLabel, QLineEdit, QTextEdit, QPlainTextEdit, QCheckBox, QComboBox,
     QPushButton, QDialogButtonBox, QFrame,
     QFileDialog, QScrollArea, QWidget, QSizePolicy,
 )
@@ -177,6 +177,22 @@ class EntryEditor(QDialog):
         self._notes_edit.setMaximumHeight(80)
         inner_layout.addWidget(self._notes_edit)
 
+        # Aliases & display name
+        inner_layout.addWidget(self._section_sep())
+        inner_layout.addWidget(self._section_label("Aliases  (alternate names — one per line):"))
+        self._aliases_edit = QPlainTextEdit()
+        self._aliases_edit.setMaximumHeight(64)
+        self._aliases_edit.setPlaceholderText("e.g.\nDemon\nCreepymon")
+        self._aliases_edit.textChanged.connect(self._on_aliases_changed)
+        inner_layout.addWidget(self._aliases_edit)
+
+        inner_layout.addWidget(self._section_label("Display as:"))
+        self._display_combo = QComboBox()
+        self._display_combo.setToolTip(
+            "Which name to show in the canvas and lists (canonical name is always stored)"
+        )
+        inner_layout.addWidget(self._display_combo)
+
         inner_layout.addStretch()
         root.addWidget(scroll)
 
@@ -240,6 +256,35 @@ class EntryEditor(QDialog):
 
         # notes
         self._notes_edit.setPlainText(e.notes)
+
+        # aliases & display name
+        self._aliases_edit.setPlainText("\n".join(e.aliases))
+        self._rebuild_display_combo(e.display_name)
+
+    def _rebuild_display_combo(self, current_display: str = ""):
+        self._display_combo.blockSignals(True)
+        self._display_combo.clear()
+        self._display_combo.addItem(f"(canonical)  {self._entry.name}", "")
+        for alias in self._entry.aliases:
+            self._display_combo.addItem(alias, alias)
+        # Select the matching entry
+        idx = 0
+        if current_display:
+            for i in range(self._display_combo.count()):
+                if self._display_combo.itemData(i) == current_display:
+                    idx = i
+                    break
+        self._display_combo.setCurrentIndex(idx)
+        self._display_combo.blockSignals(False)
+
+    def _on_aliases_changed(self):
+        self._entry.aliases = [
+            line.strip()
+            for line in self._aliases_edit.toPlainText().splitlines()
+            if line.strip()
+        ]
+        current = self._display_combo.currentData() or ""
+        self._rebuild_display_combo(current)
 
     # ------------------------------------------------------------------
     # Image helpers
@@ -305,6 +350,9 @@ class EntryEditor(QDialog):
         e.sleep_time     = self._sleep_edit.text().strip() or None
         e.wikimon_key    = self._wiki_key_edit.text().strip() or None
         e.notes          = self._notes_edit.toPlainText().strip()
+
+        # aliases / display name (already kept live via _on_aliases_changed)
+        e.display_name = self._display_combo.currentData() or ""
 
         self.accept()
 

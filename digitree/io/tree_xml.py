@@ -26,7 +26,8 @@ def save_tree(tree: Tree, path: Path | str) -> None:
                           id=tree.id,
                           name=tree.name,
                           device=tree.device,
-                          version=_SCHEMA_VERSION)
+                          version=_SCHEMA_VERSION,
+                          stage_display_index=str(tree.stage_display_index))
 
     meta = etree.SubElement(root, "meta")
     _sub(meta, "created",  tree.created)
@@ -40,9 +41,13 @@ def save_tree(tree: Tree, path: Path | str) -> None:
 
     stages_el = etree.SubElement(root, "stages")
     for s in tree.stages:
-        etree.SubElement(stages_el, "stage",
-                         id=s.id, label=s.label,
-                         order=str(s.order), color=s.color)
+        s_el = etree.SubElement(stages_el, "stage",
+                                id=s.id, label=s.label,
+                                order=str(s.order), color=s.color)
+        if s.aliases:
+            aliases_el = etree.SubElement(s_el, "aliases")
+            for alias in s.aliases:
+                _sub(aliases_el, "alias", alias)
 
     tags_el = etree.SubElement(root, "type_tags")
     for t in tree.type_tags:
@@ -62,6 +67,12 @@ def save_tree(tree: Tree, path: Path | str) -> None:
                                     id=e.id, name=e.name, stage=e.stage_id)
         if e.wikimon_key:
             entry_el.set("wikimon_key", e.wikimon_key)
+        if e.display_name:
+            entry_el.set("display_name", e.display_name)
+        if e.aliases:
+            aliases_el = etree.SubElement(entry_el, "aliases")
+            for alias in e.aliases:
+                _sub(aliases_el, "alias", alias)
 
         tt_el = etree.SubElement(entry_el, "type_tags")
         for tid in e.type_tag_ids:
@@ -131,6 +142,7 @@ def load_tree(path: Path | str) -> Tree:
         id=root.get("id", ""),
         name=root.get("name", "Untitled"),
         device=root.get("device", ""),
+        stage_display_index=int(root.get("stage_display_index", "0")),
     )
 
     meta = root.find("meta")
@@ -147,12 +159,18 @@ def load_tree(path: Path | str) -> Tree:
         ))
 
     for el in root.findall("stages/stage"):
-        tree.stages.append(Stage(
+        stage = Stage(
             id=el.get("id", ""),
             label=el.get("label", ""),
             order=int(el.get("order", "0")),
             color=el.get("color", "#FFFFFF"),
-        ))
+        )
+        stage.aliases = [
+            (a.text or "").strip()
+            for a in el.findall("aliases/alias")
+            if (a.text or "").strip()
+        ]
+        tree.stages.append(stage)
 
     for el in root.findall("type_tags/tag"):
         tree.type_tags.append(TypeTag(
@@ -190,6 +208,12 @@ def load_tree(path: Path | str) -> Tree:
             entry.sprite_local      = spr.get("local") or None
             entry.sprite_source_url = spr.get("source_url") or None
 
+        entry.display_name = e_el.get("display_name", "")
+        entry.aliases = [
+            (a.text or "").strip()
+            for a in e_el.findall("aliases/alias")
+            if (a.text or "").strip()
+        ]
         entry.library_number = _int_txt(e_el, "library_number")
         entry.power          = _int_txt(e_el, "power")
         entry.hp             = _int_txt(e_el, "hp")

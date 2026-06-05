@@ -124,12 +124,20 @@ class MainWindow(QMainWindow):
         self._ver_filter_combo.currentIndexChanged.connect(self._on_version_filter_changed)
         tb.addWidget(self._ver_filter_combo)
 
+        tb.addSeparator()
+        self._stage_names_combo = QComboBox()
+        self._stage_names_combo.setMinimumWidth(130)
+        self._stage_names_combo.setToolTip("Stage naming convention")
+        self._stage_names_combo.currentIndexChanged.connect(self._on_stage_names_changed)
+        tb.addWidget(self._stage_names_combo)
+
     def _set_tree_actions_enabled(self, enabled: bool):
         for action in (self._action_stages, self._action_types,
                        self._action_reqs, self._action_versions,
                        self._action_save, self._action_fit):
             action.setEnabled(enabled)
         self._ver_filter_combo.setEnabled(enabled)
+        self._stage_names_combo.setEnabled(enabled)
 
     # ------------------------------------------------------------------
     # Menu
@@ -249,6 +257,7 @@ class MainWindow(QMainWindow):
         dlg = StagesEditor(self._current_tree.stages, self)
         if dlg.exec() == QDialog.Accepted:
             self._current_tree.stages = dlg.get_stages()
+            self._rebuild_stage_names_combo()
             self._auto_save()
 
     def _on_edit_type_tags(self):
@@ -377,6 +386,43 @@ class MainWindow(QMainWindow):
     def _on_entry_moved(self, _entry_id: str, _x: float, _y: float):
         self._auto_save()
 
+    def _rebuild_stage_names_combo(self):
+        self._stage_names_combo.blockSignals(True)
+        self._stage_names_combo.clear()
+        if not self._current_tree:
+            self._stage_names_combo.blockSignals(False)
+            return
+        self._stage_names_combo.addItem("Primary labels", 0)
+        # Discover how many alias slots are populated across all stages
+        max_aliases = max((len(s.aliases) for s in self._current_tree.stages), default=0)
+        for slot in range(max_aliases):
+            samples = [
+                s.aliases[slot]
+                for s in sorted(self._current_tree.stages, key=lambda x: x.order)
+                if slot < len(s.aliases)
+            ]
+            preview = " / ".join(samples[:4])
+            if len(samples) > 4:
+                preview += "…"
+            self._stage_names_combo.addItem(f"Alias {slot + 1}  ({preview})", slot + 1)
+        # Restore saved selection
+        stored = self._current_tree.stage_display_index
+        for i in range(self._stage_names_combo.count()):
+            if self._stage_names_combo.itemData(i) == stored:
+                self._stage_names_combo.setCurrentIndex(i)
+                break
+        self._stage_names_combo.blockSignals(False)
+
+    def _on_stage_names_changed(self, _idx: int):
+        if not self._current_tree:
+            return
+        idx = self._stage_names_combo.currentData()
+        if idx is None:
+            return
+        self._current_tree.stage_display_index = idx
+        self._refresh_panels()
+        self._auto_save()
+
     def _rebuild_version_filter(self):
         self._ver_filter_combo.blockSignals(True)
         self._ver_filter_combo.clear()
@@ -391,6 +437,7 @@ class MainWindow(QMainWindow):
         self._current_path = path
         self._update_title()
         self._rebuild_version_filter()
+        self._rebuild_stage_names_combo()
         self._set_tree_actions_enabled(True)
         self._center_stack.setCurrentIndex(1)
         self._refresh_panels()

@@ -10,7 +10,7 @@ from PySide6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPainterPath, QPixmap,
 )
 
-from digitree.models.tree import Tree
+from digitree.models.tree import Tree, get_entry_display_name
 from digitree.widgets.graph_canvas import GraphCanvas
 
 CARD_W: float = 160.0
@@ -323,7 +323,7 @@ class GrowthTreeCanvas(GraphCanvas):
 
             card = _EntryCardItem(
                 entry_id=entry.id,
-                name=entry.name,
+                name=get_entry_display_name(entry),
                 stage_color=stage_color,
                 type_symbols=type_symbols,
                 has_wikimon=bool(entry.wikimon_key),

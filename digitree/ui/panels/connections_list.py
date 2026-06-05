@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 
-from digitree.models.tree import Tree
+from digitree.models.tree import Tree, get_entry_display_name
 
 
 class ConnectionsListPanel(QWidget):
@@ -46,7 +46,7 @@ class ConnectionsListPanel(QWidget):
 
     def refresh(self, tree: Tree):
         self._table.setRowCount(0)
-        entry_map   = {e.id: e.name   for e in tree.entries}
+        entry_map   = {e.id: get_entry_display_name(e) for e in tree.entries}
         version_map = {v.id: v.label  for v in tree.versions}
 
         for conn in tree.connections:
