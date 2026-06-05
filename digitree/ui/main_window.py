@@ -2,8 +2,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtWidgets import (
-    QMainWindow, QLabel, QSplitter,
-    QStatusBar, QFileDialog, QMessageBox, QDialog,
+    QMainWindow, QLabel, QSplitter, QDialog,
+    QStatusBar, QFileDialog, QMessageBox,
+    QToolBar, QTabWidget, QWidget,
 )
 from PySide6.QtCore import Qt
 
@@ -13,6 +14,8 @@ from digitree.db.cache import CacheDB
 from digitree.models.tree import Tree
 from digitree.io.tree_xml import save_tree, load_tree
 from digitree.ui.panels.sidebar import TreeSidebar
+from digitree.ui.panels.entries_list import EntriesListPanel
+from digitree.ui.panels.connections_list import ConnectionsListPanel
 
 
 class MainWindow(QMainWindow):
@@ -28,10 +31,12 @@ class MainWindow(QMainWindow):
         self._restore_geometry()
 
         self._build_layout()
+        self._build_toolbar()
         self._build_menu()
         self._build_status_bar()
 
         self._sidebar.populate(self._config.recent_trees())
+        self._set_tree_actions_enabled(False)
 
     # ------------------------------------------------------------------
     # Layout
@@ -40,18 +45,39 @@ class MainWindow(QMainWindow):
     def _build_layout(self):
         splitter = QSplitter(Qt.Horizontal)
 
+        # Left sidebar
         self._sidebar = TreeSidebar()
         self._sidebar.new_tree_requested.connect(self._on_new_tree)
         self._sidebar.tree_open_requested.connect(self._open_tree_from_path)
 
-        self._canvas_placeholder = QLabel(
+        # Center: tab widget with entries + connections lists
+        self._center_tabs = QTabWidget()
+        self._entries_panel = EntriesListPanel()
+        self._entries_panel.add_requested.connect(self._on_add_entry)
+        self._entries_panel.edit_requested.connect(self._on_edit_entry)
+        self._connections_panel = ConnectionsListPanel()
+        self._connections_panel.add_requested.connect(self._on_add_connection)
+        self._connections_panel.edit_requested.connect(self._on_edit_connection)
+        self._center_tabs.addTab(self._entries_panel, "Entries")
+        self._center_tabs.addTab(self._connections_panel, "Connections")
+
+        # Canvas placeholder (shown when no tree is open)
+        self._no_tree_label = QLabel(
             "Canvas goes here\n\nCreate or open a tree to get started."
         )
-        self._canvas_placeholder.setAlignment(Qt.AlignCenter)
-        self._canvas_placeholder.setStyleSheet(
+        self._no_tree_label.setAlignment(Qt.AlignCenter)
+        self._no_tree_label.setStyleSheet(
             "background:#ffffff; color:#aaa; font-size:14px;"
         )
 
+        # Use a stacked-ish approach: swap between placeholder and tabs
+        from PySide6.QtWidgets import QStackedWidget
+        self._center_stack = QStackedWidget()
+        self._center_stack.addWidget(self._no_tree_label)   # index 0
+        self._center_stack.addWidget(self._center_tabs)      # index 1
+        self._center_stack.setCurrentIndex(0)
+
+        # Right profile placeholder
         self._profile_placeholder = QLabel("Profile panel")
         self._profile_placeholder.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         self._profile_placeholder.setMinimumWidth(240)
@@ -61,11 +87,33 @@ class MainWindow(QMainWindow):
         )
 
         splitter.addWidget(self._sidebar)
-        splitter.addWidget(self._canvas_placeholder)
+        splitter.addWidget(self._center_stack)
         splitter.addWidget(self._profile_placeholder)
         splitter.setStretchFactor(1, 1)
 
         self.setCentralWidget(splitter)
+
+    # ------------------------------------------------------------------
+    # Toolbar
+    # ------------------------------------------------------------------
+
+    def _build_toolbar(self):
+        tb = QToolBar("Tree Settings")
+        tb.setMovable(False)
+        self.addToolBar(tb)
+
+        self._action_stages   = tb.addAction("Stages",       self._on_edit_stages)
+        self._action_types    = tb.addAction("Type Tags",    self._on_edit_type_tags)
+        self._action_reqs     = tb.addAction("Req. Types",   self._on_edit_req_types)
+        self._action_versions = tb.addAction("Versions",     self._on_edit_versions)
+        tb.addSeparator()
+        self._action_save = tb.addAction("Save",             self._on_save)
+
+    def _set_tree_actions_enabled(self, enabled: bool):
+        for action in (self._action_stages, self._action_types,
+                       self._action_reqs, self._action_versions,
+                       self._action_save):
+            action.setEnabled(enabled)
 
     # ------------------------------------------------------------------
     # Menu
@@ -175,6 +223,131 @@ class MainWindow(QMainWindow):
         self._status.showMessage(f"Saved: {path.name}")
 
     # ------------------------------------------------------------------
+    # Tree settings dialogs
+    # ------------------------------------------------------------------
+
+    def _on_edit_stages(self):
+        if not self._current_tree:
+            return
+        from digitree.ui.dialogs.stages_editor import StagesEditor
+        dlg = StagesEditor(self._current_tree.stages, self)
+        if dlg.exec() == QDialog.Accepted:
+            self._current_tree.stages = dlg.get_stages()
+            self._auto_save()
+
+    def _on_edit_type_tags(self):
+        if not self._current_tree:
+            return
+        from digitree.ui.dialogs.type_tags_editor import TypeTagsEditor
+        dlg = TypeTagsEditor(self._current_tree.type_tags, self)
+        if dlg.exec() == QDialog.Accepted:
+            self._current_tree.type_tags = dlg.get_tags()
+            self._auto_save()
+
+    def _on_edit_req_types(self):
+        if not self._current_tree:
+            return
+        from digitree.ui.dialogs.req_types_editor import ReqTypesEditor
+        dlg = ReqTypesEditor(self._current_tree.requirement_types, self)
+        if dlg.exec() == QDialog.Accepted:
+            self._current_tree.requirement_types = dlg.get_req_types()
+            self._auto_save()
+
+    def _on_edit_versions(self):
+        if not self._current_tree:
+            return
+        from digitree.ui.dialogs.versions_editor import VersionsEditor
+        dlg = VersionsEditor(self._current_tree.versions, self)
+        if dlg.exec() == QDialog.Accepted:
+            self._current_tree.versions = dlg.get_versions()
+            self._auto_save()
+
+    # ------------------------------------------------------------------
+    # Entry operations
+    # ------------------------------------------------------------------
+
+    def _on_add_entry(self):
+        if not self._current_tree:
+            return
+        from digitree.ui.dialogs.entry_editor import EntryEditor
+        dlg = EntryEditor(self._current_tree, parent=self)
+        if dlg.exec() == QDialog.Accepted and not dlg.was_deleted():
+            self._current_tree.entries.append(dlg.get_entry())
+            self._refresh_panels()
+            self._auto_save()
+
+    def _on_edit_entry(self, entry_id: str):
+        if not self._current_tree:
+            return
+        entry = next((e for e in self._current_tree.entries
+                      if e.id == entry_id), None)
+        if entry is None:
+            return
+        from digitree.ui.dialogs.entry_editor import EntryEditor
+        dlg = EntryEditor(self._current_tree, entry, parent=self)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        if dlg.was_deleted():
+            self._current_tree.entries = [
+                e for e in self._current_tree.entries if e.id != entry_id
+            ]
+            # also remove connections that reference this entry
+            self._current_tree.connections = [
+                c for c in self._current_tree.connections
+                if c.from_entry_id != entry_id and c.to_entry_id != entry_id
+            ]
+        else:
+            updated = dlg.get_entry()
+            for i, e in enumerate(self._current_tree.entries):
+                if e.id == entry_id:
+                    self._current_tree.entries[i] = updated
+                    break
+        self._refresh_panels()
+        self._auto_save()
+
+    # ------------------------------------------------------------------
+    # Connection operations
+    # ------------------------------------------------------------------
+
+    def _on_add_connection(self):
+        if not self._current_tree:
+            return
+        if len(self._current_tree.entries) < 2:
+            QMessageBox.information(self, "Not enough entries",
+                                    "Add at least 2 entries before creating a connection.")
+            return
+        from digitree.ui.dialogs.connection_editor import ConnectionEditor
+        dlg = ConnectionEditor(self._current_tree, parent=self)
+        if dlg.exec() == QDialog.Accepted and not dlg.was_deleted():
+            self._current_tree.connections.append(dlg.get_connection())
+            self._refresh_panels()
+            self._auto_save()
+
+    def _on_edit_connection(self, conn_id: str):
+        if not self._current_tree:
+            return
+        conn = next((c for c in self._current_tree.connections
+                     if c.id == conn_id), None)
+        if conn is None:
+            return
+        from digitree.ui.dialogs.connection_editor import ConnectionEditor
+        dlg = ConnectionEditor(self._current_tree, conn, parent=self)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        if dlg.was_deleted():
+            self._current_tree.connections = [
+                c for c in self._current_tree.connections if c.id != conn_id
+            ]
+        else:
+            updated = dlg.get_connection()
+            for i, c in enumerate(self._current_tree.connections):
+                if c.id == conn_id:
+                    self._current_tree.connections[i] = updated
+                    break
+        self._refresh_panels()
+        self._auto_save()
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
@@ -182,6 +355,19 @@ class MainWindow(QMainWindow):
         self._current_tree = tree
         self._current_path = path
         self._update_title()
+        self._set_tree_actions_enabled(True)
+        self._center_stack.setCurrentIndex(1)
+        self._refresh_panels()
+
+    def _refresh_panels(self):
+        if self._current_tree:
+            self._entries_panel.refresh(self._current_tree)
+            self._connections_panel.refresh(self._current_tree)
+
+    def _auto_save(self):
+        if self._current_tree and self._current_path:
+            save_tree(self._current_tree, self._current_path)
+            self._status.showMessage(f"Saved: {self._current_path.name}")
 
     def _update_title(self):
         if self._current_tree:
@@ -199,10 +385,8 @@ class MainWindow(QMainWindow):
         return Path(path_str) if path_str else None
 
     def _on_about(self):
-        QMessageBox.about(
-            self, "DigiTree",
-            "DigiTree — Digimon growth tree builder\nPhase 1"
-        )
+        QMessageBox.about(self, "DigiTree",
+                          "DigiTree — Digimon growth tree builder\nPhase 1–2")
 
     # ------------------------------------------------------------------
     # Geometry persistence
