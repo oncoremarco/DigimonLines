@@ -4,7 +4,7 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QLabel, QSplitter, QDialog,
     QStatusBar, QFileDialog, QMessageBox,
-    QToolBar, QTabWidget, QWidget,
+    QToolBar, QTabWidget, QWidget, QComboBox,
 )
 from PySide6.QtCore import Qt
 
@@ -16,6 +16,7 @@ from digitree.io.tree_xml import save_tree, load_tree
 from digitree.ui.panels.sidebar import TreeSidebar
 from digitree.ui.panels.entries_list import EntriesListPanel
 from digitree.ui.panels.connections_list import ConnectionsListPanel
+from digitree.widgets.growth_tree_canvas import GrowthTreeCanvas
 
 
 class MainWindow(QMainWindow):
@@ -50,8 +51,14 @@ class MainWindow(QMainWindow):
         self._sidebar.new_tree_requested.connect(self._on_new_tree)
         self._sidebar.tree_open_requested.connect(self._open_tree_from_path)
 
-        # Center: tab widget with entries + connections lists
+        # Center: tab widget with graph canvas + entries + connections lists
         self._center_tabs = QTabWidget()
+
+        self._canvas = GrowthTreeCanvas()
+        self._canvas.entry_double_clicked.connect(self._on_edit_entry)
+        self._canvas.entry_moved.connect(self._on_entry_moved)
+        self._center_tabs.addTab(self._canvas, "Graph")
+
         self._entries_panel = EntriesListPanel()
         self._entries_panel.add_requested.connect(self._on_add_entry)
         self._entries_panel.edit_requested.connect(self._on_edit_entry)
@@ -107,13 +114,22 @@ class MainWindow(QMainWindow):
         self._action_reqs     = tb.addAction("Req. Types",   self._on_edit_req_types)
         self._action_versions = tb.addAction("Versions",     self._on_edit_versions)
         tb.addSeparator()
-        self._action_save = tb.addAction("Save",             self._on_save)
+        self._action_save     = tb.addAction("Save",         self._on_save)
+        tb.addSeparator()
+        self._action_fit      = tb.addAction("Fit View",     self._on_fit_view)
+        tb.addSeparator()
+        self._ver_filter_combo = QComboBox()
+        self._ver_filter_combo.setMinimumWidth(110)
+        self._ver_filter_combo.setToolTip("Filter graph by version")
+        self._ver_filter_combo.currentIndexChanged.connect(self._on_version_filter_changed)
+        tb.addWidget(self._ver_filter_combo)
 
     def _set_tree_actions_enabled(self, enabled: bool):
         for action in (self._action_stages, self._action_types,
                        self._action_reqs, self._action_versions,
-                       self._action_save):
+                       self._action_save, self._action_fit):
             action.setEnabled(enabled)
+        self._ver_filter_combo.setEnabled(enabled)
 
     # ------------------------------------------------------------------
     # Menu
@@ -351,10 +367,30 @@ class MainWindow(QMainWindow):
     # Helpers
     # ------------------------------------------------------------------
 
+    def _on_fit_view(self):
+        self._canvas.fit_view()
+
+    def _on_version_filter_changed(self, _idx: int):
+        version_id = self._ver_filter_combo.currentData()
+        self._canvas.set_version_filter(version_id or None)
+
+    def _on_entry_moved(self, _entry_id: str, _x: float, _y: float):
+        self._auto_save()
+
+    def _rebuild_version_filter(self):
+        self._ver_filter_combo.blockSignals(True)
+        self._ver_filter_combo.clear()
+        self._ver_filter_combo.addItem("All versions", None)
+        if self._current_tree:
+            for v in self._current_tree.versions:
+                self._ver_filter_combo.addItem(v.label, v.id)
+        self._ver_filter_combo.blockSignals(False)
+
     def _set_current_tree(self, tree: Tree, path: Path):
         self._current_tree = tree
         self._current_path = path
         self._update_title()
+        self._rebuild_version_filter()
         self._set_tree_actions_enabled(True)
         self._center_stack.setCurrentIndex(1)
         self._refresh_panels()
@@ -363,6 +399,7 @@ class MainWindow(QMainWindow):
         if self._current_tree:
             self._entries_panel.refresh(self._current_tree)
             self._connections_panel.refresh(self._current_tree)
+            self._canvas.set_tree(self._current_tree)
 
     def _auto_save(self):
         if self._current_tree and self._current_path:
