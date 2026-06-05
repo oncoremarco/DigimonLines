@@ -3,7 +3,7 @@ import math
 
 from PySide6.QtWidgets import (
     QGraphicsItem, QGraphicsObject, QGraphicsPathItem,
-    QStyleOptionGraphicsItem,
+    QStyle, QStyleOptionGraphicsItem,
 )
 from PySide6.QtCore import Qt, QRectF, QPointF, Signal
 from PySide6.QtGui import (
@@ -65,7 +65,7 @@ class _EntryCardItem(QGraphicsObject):
         option: QStyleOptionGraphicsItem,
         widget=None,
     ):
-        selected = bool(option.state & 0x0002)  # QStyle.State_Selected
+        selected = bool(option.state & QStyle.State_Selected)
 
         # Drop shadow
         painter.setBrush(QBrush(QColor(0, 0, 0, 25)))
