@@ -156,6 +156,9 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Exit",       self.close)
 
         mb.addMenu("&View").addAction("(Coming soon)")
+
+        tools_menu = mb.addMenu("&Tools")
+        tools_menu.addAction("Import Digimon Database…", self._on_import_database)
         mb.addMenu("&Help").addAction("About DigiTree", self._on_about)
 
     # ------------------------------------------------------------------
@@ -472,6 +475,13 @@ class MainWindow(QMainWindow):
             self, "Save Tree As", default, "DigiTree Files (*.dtree.xml)"
         )
         return Path(path_str) if path_str else None
+
+    def _on_import_database(self):
+        from digitree.ui.dialogs.import_dialog import ImportDialog
+        delay = float(self._config.get("wikimon_rate_limit", 2.0))
+        ImportDialog(self._db, delay, self).exec()
+        self.statusBar().showMessage(
+            f"Digimon database: {self._db.count_digimon()} Digimon", 5000)
 
     def _on_about(self):
         QMessageBox.about(self, "DigiTree",
