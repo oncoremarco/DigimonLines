@@ -1,0 +1,45 @@
+{{S2
+|image=Volcamon.jpg
+|name=Volcamon
+|jname=ヴォルクモン
+|level1=[[Perfect]]|levelref1=<ref>[[Digimon Reference Book]]</ref>
+|type1=[[Cyborg]]
+|attribute1=[[Data]]
+|family1=[[Metal Empire]]<ref>Digimon Story</ref>
+|family2=[[Nature Spirits]]
+|weight=32g
+}}
+'''Volcamon''' is a Cyborg Digimon.<!-- hidden note -->
+
+==Description==
+{{Description
+|j=全身をクロンデジゾイドで覆った武装サイボーグ型デジモン。
+|e=A Cyborg Digimon whose entire body is armored with Chrome Digizoid. It wields a huge hammer forged in the volcano it lives in.<ref>[[Digimon Reference Book]]</ref>
+}}
+
+==Attack Techniques==
+{| class="wikitable"
+|-
+! Name !! Kanji/Katakana !! Romaji !! Dub !! Description
+|-
+| '''Volcanic Hammer''' || ヴォルケーノハンマー || Vorukēno Hanmā || Volcanic Hammer || Strikes the ground with its hammer, causing a small eruption.
+|-
+| '''Battle Hawk''' || バトルホーク || Batoru Hōku || Battle Hawk || Throws the hammer like a boomerang.
+|}
+
+==Evolution==
+===Evolves From===
+*[[Tankmon]]<ref>Digimon Story</ref>
+*[[Greymon]] (w/ [[Metal Empire]] field)
+*[[Gururumon|Gururumon (Digimon Story)]]
+*[[File:Icon.png]] [[Tankmon]]
+
+===Evolves To===
+*[[Metal Greymon]]
+*[[ShineGreymon]]
+**Notes in a sub-bullet without a link
+
+==Image Gallery==
+<gallery>
+Volcamon.jpg
+</gallery>

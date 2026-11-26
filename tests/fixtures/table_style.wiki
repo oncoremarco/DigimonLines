@@ -1,0 +1,25 @@
+{| class="infobox"
+! Level || [[Adult]]
+|-
+! Type || Reptile
+|-
+! Attribute || [[Vaccine]]
+|-
+! Field || [[Nature Spirits]] / [[Dragon's Roar]]
+|}
+
+== Profile ==
+Some Japanese-only text here: 恐竜型デジモン。
+
+A dinosaur Digimon that evolved from Agumon. Its head is covered in a hard shell and it breathes fire.
+
+== Attacks ==
+* '''Mega Flame''' (Mega Furēmu): Spits a ball of fire.
+* '''Great Antler''': Charges with its horns.
+
+== Digivolves From ==
+* [[Agumon]]
+* {{EvoLink|Koromon}}
+
+== Digivolves To ==
+# [[MetalGreymon]]
